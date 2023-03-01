@@ -19,8 +19,19 @@ if len(sys.argv) > 1:
 else:
     domain_name = input("Enter the domain name to check (e.g. example.com): ")
 
+print(f"\nDomain: {domain_name}")
+
 # Find the MX
-mx_records = sorted(dns.resolver.resolve(domain_name, 'MX'), key=lambda r: r.preference)
+try:
+     mx_records = sorted(dns.resolver.resolve(domain_name, 'MX'), key=lambda r: r.preference)
+except dns.resolver.NXDOMAIN:
+    print("\033[31m" + f"\nNo MX record was found for the domain {domain_name}."  + "\033[0m")
+    mx_records = []
+except dns.resolver.NoAnswer:
+    mx_records = []
+    pass
+
+
 mx_google = [mx.exchange.to_text() for mx in mx_records if 'google' in mx.exchange.to_text().lower()]
 mx_microsoft = [mx.exchange.to_text() for mx in mx_records if 'outlook' in mx.exchange.to_text().lower()]
 
@@ -41,7 +52,7 @@ else:
 try:
     spf_records = [r.strings[0].decode() for r in dns.resolver.resolve(domain_name, 'TXT') if 'v=spf1' in r.strings[0].decode()]
 except dns.resolver.NXDOMAIN:
-    print("\033[31m" + f"\nNo SPF record was found for the domain {domain_name}.")
+    print("\033[31m" + f"\nNo SPF record was found for the domain {domain_name}."  + "\033[0m")
     spf_records = []
 except dns.resolver.NoAnswer:
     spf_records = []
@@ -55,6 +66,7 @@ if spf_records:
         for record in spf_records:
             print(record)
     else:
+        # NICE!
         print("\nSPF record detected:")
         # Check syntax of SPF record
         if spf_records[0].startswith("v=spf1"):
@@ -69,11 +81,11 @@ elif not spf_records:
 try:
     dmarc_records = [r.strings[0].decode() for r in dns.resolver.resolve(f"_dmarc.{domain_name}", 'TXT') if 'v=DMARC1' in r.strings[0].decode()]
 except dns.resolver.NXDOMAIN:
-    print("\033[31m" + f"\nNo DMARC record was found for the domain {domain_name}.")
+    print("\033[31m" + f"\nNo DMARC record was found for the domain {domain_name}." + "\033[0m")
     dmarc_records = []
     pass
 except dns.resolver.NoAnswer:
-    print("\033[31m" + f"\nNo DMARC record was found for the domain {domain_name}.")
+    print("\033[31m" + f"\nNo DMARC record was found for the domain {domain_name}."  + "\033[0m")
     dmarc_records = []
     pass
 if dmarc_records:
@@ -118,4 +130,4 @@ for selector in dkim_selector:
                 print("\033[31m" + f"ERROR: Invalid DKIM record found for {selector}._domainkey.{domain_name}:" + "\033[0m")
                 print(dkim_records[0])
     else:
-        print("\033[31m" + f"\nNo DKIM record was found for selector {selector}._domainkey.{domain_name}." + "\033[0m")
+        print("\033[31m" + f"\nNo DKIM record was found for selector {selector}._domainkey.{domain_name}.\n" + "\033[0m")
